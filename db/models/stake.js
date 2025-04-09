@@ -1,11 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
   const stake = sequelize.define('stake', {
-    id: {
-      allowNull: false,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     user_address: DataTypes.STRING,
     unix_timestamp: DataTypes.INTEGER,
     staked_amount: DataTypes.DECIMAL(20,9),

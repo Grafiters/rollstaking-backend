@@ -22,9 +22,10 @@ const encodeData = (message, address, signature) => {
  * @returns { {address: string, message: string, signature: string} } decode data
  */
 const decodeData = (auth_signature) => {
-    try {
+    try {        
         const bytes = CryptoJS.AES.decrypt(auth_signature, SECRETKEY);
         const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+        
         const { message, address, signature } = JSON.parse(decrypted);
         return { address, message, signature };
     } catch (error) {

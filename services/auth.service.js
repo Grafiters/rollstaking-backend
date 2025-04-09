@@ -1,6 +1,8 @@
 const { PublicKey } = require("@solana/web3.js");
 const nacl = require('tweetnacl');
 const { decodeData } = require("./ecnryption.service");
+const model = require('../db/models');
+const { GenerateLowercaseUID } = require("./uid.service");
 
 const authVerify = async (req, res) => {
     const userSignature = req.headers[`x-signature`]
@@ -13,12 +15,18 @@ const authVerify = async (req, res) => {
 
     try {
         const decode = decodeData(userSignature);
+        
         const verify = verifySolanaSignature(decode.address, decode.message, decode.signature);
         if (verify) {
-            req.user = {
-                address: decode.address,
-                signature: decode.signature,
-            };
+            const [user, created] = await model.user.findOrCreate({
+                where: { address: decode.address },
+                defaults: {
+                    address: decode.address,
+                    uid: GenerateLowercaseUID(10)
+                }
+            })
+
+            req.user = user
         }
     } catch (error) {
         return res.status(401).send({
@@ -35,7 +43,7 @@ const authVerify = async (req, res) => {
  * @param {string} signature
  * @returns {boolean}
  */
-const verifySolanaSignature = async (address, message, signature) => {
+const verifySolanaSignature = async (address, message, signature) => {    
     try {
         message = new TextEncoder().encode(message)
         signature = Uint8Array.from(atob(signature), c => c.charCodeAt(0));

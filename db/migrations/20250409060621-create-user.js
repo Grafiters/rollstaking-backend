@@ -11,25 +11,27 @@ module.exports = {
       },
       address: {
         allowNull: false,
+        unique: true,
         type: Sequelize.STRING
       },
       uid: {
         allowNull: false,
+        unique: true,
         type: Sequelize.STRING
-      },
-      claim_reff_reward: {
-        defaultValue: 0,
-        type: Sequelize.DECIMAL(20,9)
       },
       parent_id: {
         allowNull: true,
         type: Sequelize.INTEGER
       },
-      createdAt: {
+      claim_reff_reward: {
+        defaultValue: 0,
+        type: Sequelize.DECIMAL(20,9)
+      },
+      created_at: {
         allowNull: false,
         type: Sequelize.DATE
       },
-      updatedAt: {
+      updated_at: {
         allowNull: false,
         type: Sequelize.DATE
       }
