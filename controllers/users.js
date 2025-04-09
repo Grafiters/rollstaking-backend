@@ -1,8 +1,10 @@
 const { where } = require('sequelize');
 const model = require('../db/models');
+const { addJob } = require('../workers/queue');
+const { reffLevel, percentage } = require('../services/referal.service');
 
 exports.users = async(req, res) => {
-    const total = await model.refferal.count({
+    const total = await model.refferal.sum('amount',{
         where: {
           reference: req.user.address
         }
@@ -90,9 +92,27 @@ exports.referalList = async(req, res) => {
         order: [['createdAt', 'DESC']]
     })
 
+    const transformed = [];
+    if (reffereds.length > 0) {
+        transformed = await Promise.all(reffereds.map(async (reff) => {
+            const reff = await reffLevel(reff.user_address)
+            const percent = await percentage(reff)
+
+            return {
+                user_address: reff.user_address,
+                reference: reff.referemce,
+                amount: reff.amount,
+                reffLevel: reff,
+                percent: percent,
+                state: reff.state,
+                created_at: reff.created_at
+            }
+        }))
+    }
+
     return res.status(200).send({
         status: 200,
-        data: reffereds,
+        data: transformed,
         meta: {
           total,
           page,
@@ -112,35 +132,8 @@ exports.claimRewardReff = async(req, res) => {
     });
 
     if (total > 0) {
-        const update = await model.refferal.update({
-                state: 'process',
-            },
-            {
-                where: {
-                    reference: req.user.address,
-                    state: 'pending'
-                }
-            })
-        if (update) {
-            return res.status(200).send({
-                status: 200,
-                data: `reward is processed to claim`,
-            });  
-        }
-    }
-
-    const totalReward = await model.refferal.count({
-        where: {
-            reference: user.address,
-            state: 'pending'
-        }
-    })
-
-    if (totalReward > 0) {
-        return res.status(200).send({
-            status: 200,
-            data: `reward is still processed to claim`,
-        });  
+        const job = { user_address: user.address, status: 'process', timestamp: Date.now() }
+        addJob(job)
     }
 
     return res.status(200).send({

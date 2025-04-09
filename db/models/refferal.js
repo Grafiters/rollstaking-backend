@@ -4,7 +4,6 @@ module.exports = (sequelize, DataTypes) => {
     user_address: DataTypes.STRING,
     reference: DataTypes.STRING,
     amount: DataTypes.DECIMAL(20,9),
-    state: DataTypes.INTEGER,
     state: DataTypes.STRING,
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE,
