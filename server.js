@@ -1,18 +1,24 @@
-import './config/environtment.js';
-import Fastify from 'fastify';
-import fastifyRateLimit from '@fastify/rate-limit';
-import dotenv from 'dotenv';
+require('./config/environtment.js');
+const Fastify = require('fastify');
+const fastifyRateLimit = require('@fastify/rate-limit');
+const dotenv = require('dotenv');
+const cors = require('@fastify/cors');
+const { Sequelize } = require('sequelize');
+const logger = require('./config/logger.js');
+const router = require('./routes/index.js')
 
 dotenv.config();
+
 const host = '0.0.0.0';
 const port = process.env.PORT || 3000;
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({ logger });
 
-await fastify.register(fastifyRateLimit, {
+fastify.register(fastifyRateLimit, {
     max: 100,
     timeWindow: '15 minutes'
 });
+
 
 fastify.get('/', (req, res) => {
     res.send(JSON.stringify(
@@ -20,17 +26,45 @@ fastify.get('/', (req, res) => {
             status: 200,
             message: 'Backend Nusa Blockchain is running'
         }
-    ))
+    ));
+});
+
+fastify.register(router);
+
+const {
+    DB_DATABASE,
+    DB_USERNAME,
+    DB_PASSWORD,
+    DB_HOST,
+    DB_PORT,
+    DB_DIALECT
+  } = process.env;
+
+const sequelize = new Sequelize(DB_DATABASE, DB_USERNAME, DB_PASSWORD, {
+    host: DB_HOST,
+    port: DB_PORT,
+    dialect: DB_DIALECT
 });
 
 const start = async () => {
     try {
-      await fastify.listen({ port: port || 3000, host: host });
-      console.log('🚀 Server is running');
+      await fastify.register(cors, {
+        origin: '*', // Allow all origins (for dev)
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      });
+      console.log('✅ Enabling Cors');
+
+      console.log('📡 Connecting to database...');
+      await sequelize.authenticate();
+      console.log('✅ Database connected');
+  
+      await fastify.listen({ port, host });
+      console.log(`🚀 Server running at http://${host}:${port}`);
     } catch (err) {
-      fastify.log.error(err);
+      console.error('❌ Failed to start:', err.message);
       process.exit(1);
     }
-};
+  };
+  
 
 start();
