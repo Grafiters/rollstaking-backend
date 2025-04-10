@@ -1,5 +1,6 @@
 const { PublicKey } = require("@solana/web3.js");
 const nacl = require('tweetnacl');
+const bs58 = require('bs58');
 const { decodeData } = require("./ecnryption.service");
 const model = require('../db/models');
 const { GenerateLowercaseUID } = require("./uid.service");
@@ -27,6 +28,11 @@ const authVerify = async (req, res) => {
             })
 
             req.user = user
+        }else{
+            return res.status(401).send({
+                status: false,
+                message: `signature cannot decode`
+            })
         }
     } catch (error) {
         return res.status(401).send({
@@ -45,16 +51,22 @@ const authVerify = async (req, res) => {
  */
 const verifySolanaSignature = async (address, message, signature) => {    
     try {
-        message = new TextEncoder().encode(message)
-        signature = Uint8Array.from(atob(signature), c => c.charCodeAt(0));
+        const messageBytes = new TextEncoder().encode(message);
+        const signatureBytes = bs58.decode(signature); // decode from base58
         const publicKey = new PublicKey(address);
-        
-        const isValid = nacl.sign.detached.verify(message, signature, publicKey.toBytes());
+        const publicKeyBytes = publicKey.toBytes();
+    
+        if (signatureBytes.length !== 64) {
+          console.error('⚠️ Signature length invalid:', signatureBytes.length);
+          return false;
+        }
+    
+        const isValid = nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
         return isValid;
-    } catch (error) {
-        console.error("Gagal verifikasi:", error);
+      } catch (error) {
+        console.error('❌ Gagal verifikasi:', error);
         return false;
-    }
+      }
 }
 
 module.exports = {

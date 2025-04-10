@@ -1,6 +1,5 @@
 require('./config/environtment.js');
 const Fastify = require('fastify');
-const fastifyRateLimit = require('@fastify/rate-limit');
 const dotenv = require('dotenv');
 const cors = require('@fastify/cors');
 const { Sequelize } = require('sequelize');
@@ -13,12 +12,6 @@ const host = '0.0.0.0';
 const port = process.env.PORT || 3000;
 
 const fastify = Fastify({ logger });
-
-fastify.register(fastifyRateLimit, {
-    max: 100,
-    timeWindow: '15 minutes'
-});
-
 
 fastify.get('/', (req, res) => {
     res.send(JSON.stringify(
@@ -51,20 +44,28 @@ const start = async () => {
       await fastify.register(cors, {
         origin: '*', // Allow all origins (for dev)
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        credentials: true,
       });
+      
       console.log('✅ Enabling Cors');
 
       console.log('📡 Connecting to database...');
       await sequelize.authenticate();
       console.log('✅ Database connected');
   
-      await fastify.listen({ port, host });
+      await fastify.listen({ port, host }, (err, address) => {
+        if (err) {
+          fastify.log.error(err);
+          process.exit(1);
+        }
+        fastify.log.info(`Server listening at ${address}`);
+      });
       console.log(`🚀 Server running at http://${host}:${port}`);
     } catch (err) {
       console.error('❌ Failed to start:', err.message);
       process.exit(1);
     }
-  };
+};
   
 
 start();

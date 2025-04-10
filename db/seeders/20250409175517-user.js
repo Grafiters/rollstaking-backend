@@ -42,6 +42,30 @@ module.exports = {
           updated_at: new Date()
         });
       }
+
+      for (let i = 0; i < 20; i++) {
+        const parent = Math.floor(Math.random() * 100) + 1;
+        users.push({
+          address: faker.finance.ethereumAddress(),
+          uid: faker.string.uuid(),
+          parent_id: parent,
+          claim_reff_reward: faker.finance.amount(0, 500, 9),
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+      }
+
+      for (let i = 0; i < 20; i++) {
+        const parent = Math.floor(Math.random() * 25) + 1;
+        users.push({
+          address: faker.finance.ethereumAddress(),
+          uid: faker.string.uuid(),
+          parent_id: parent,
+          claim_reff_reward: faker.finance.amount(0, 500, 9),
+          created_at: new Date(),
+          updated_at: new Date()
+        });
+      }
   
       return queryInterface.bulkInsert('users', users, {});
    

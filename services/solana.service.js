@@ -1,18 +1,19 @@
+const fs = require('fs');
+const { getAssociatedTokenAddress, createTransferInstruction } = require("@solana/spl-token");
 const { Transaction } = require("@solana/web3.js");
 const { PublicKey } = require("@solana/web3.js");
-const { sendAndConfirmTransaction } = require("@solana/web3.js");
-const { SystemProgram } = require("@solana/web3.js");
-const { clusterApiUrl } = require("@solana/web3.js");
 const { Connection } = require("@solana/web3.js");
+const { sendAndConfirmTransaction } = require("@solana/web3.js");
+const { clusterApiUrl } = require("@solana/web3.js");
 const bs58 = require('bs58');
 
+const NETWORK = process.env.SOLANA_NETWORK || 'devnet';
 const BATCH_SIZE = 20;
 
 /**
  * @returns {Connection}
  */
 const buildConnection = () => {
-    const NETWORK = process.env.SOLANA_NETWORK || 'devnet';
     const connection = new Connection(clusterApiUrl(NETWORK), 'confirmed')
 
     return connection
@@ -47,16 +48,27 @@ const buildInstruction = (address, amount) => {
 /**
  * @param {{address: string, amount: string}[]} receipient
  * @param {any} wallet
+ * @param {string} token_address
  * @returns {Transaction}
  */
-const initTransaction = (receipient, wallet) => {
+const initTransaction = async (receipient, wallet, token_address) => {
+    let mint = token_address
+    if (typeof token_address === 'string') {
+        mint = new PublicKey(token_address)
+    }
     const transactions = new Transaction()
     for (const receipt of receipient) {
+        const fromTokenAssosiate = await getAssociatedTokenAddress(mint, wallet.publicKey)
+        const toTokenAssosiate = await getAssociatedTokenAddress(mint, new PublicKey(receipt.address))
+        const publicKey = wallet.publicKey
+        const amount = receipt.amount
+
         transactions.add(
-            SystemProgram.transfer({
-                fromPubkey: wallet.publicKey,
-                toPubkey: new PublicKey(receipt.address),
-                lamports: receipt.amount
+            createTransferInstruction({
+                fromTokenAssosiate,
+                toTokenAssosiate,
+                publicKey,
+                amount
             })
         )
     }
@@ -91,8 +103,7 @@ isValidSignature = (signature) => {
   }
 }
 
-
-moduke.exports = {
+module.exports = {
     buildConnection,
     BATCH_SIZE,
     buildInstruction,

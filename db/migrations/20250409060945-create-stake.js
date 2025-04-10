@@ -14,7 +14,7 @@ module.exports = {
       },
       unix_timestamp: {
         allowNull: false,
-        type: Sequelize.INTEGER
+        type: Sequelize.BIGINT
       },
       staked_amount: {
         defaultValue: 0.0,

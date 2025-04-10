@@ -4,23 +4,38 @@ const { addJob } = require('../workers/queue');
 const { reffLevel, percentage } = require('../services/referal.service');
 
 exports.users = async(req, res) => {
-    const total = await model.refferal.sum('amount',{
+    const sum = await model.refferal.sum('amount',{
         where: {
           reference: req.user.address
         }
     });
 
-    res.send(JSON.stringify(
-        {
-            status: 200,
-            data: {
-                address: req.user.address,
-                uid: req.user.uid,
-                claim_reff_reward: req.user.claim_reff_reward,
-                total_reff: total
+    let reffs = null
+    if (req.user.parent_id) {
+        const reffUser = await model.user.findOne({
+            where: {
+                id: req.user.parent_id
             }
+        })
+
+        reffs = reffUser.address
+    }
+
+    let total = "0.0"
+    if (sum) {
+        total = sum
+    }
+
+    return res.send({
+        status: 200,
+        data: {
+            address: req.user.address,
+            uid: req.user.uid,
+            refferals: reffs,
+            claim_reff_reward: req.user.claim_reff_reward,
+            total_reff: total
         }
-    ));
+    });
 }
 
 exports.setRefral = async(req, res) => {
@@ -32,15 +47,20 @@ exports.setRefral = async(req, res) => {
         }
     })
 
-    if(!reffCheck) {
-        res.status(422).send(JSON.stringify(
-            {
-                status: 422,
-                message: `your refferal id is not found`
-            }
-        ));
+    if(!reffCheck ) {
+        return res.status(422).send({
+            status: 422,
+            message: `your refferal id is not found`
+        });
     }
     
+    if(String(referals).toLowerCase() == String(req.user.uid).toLowerCase()) {
+        return res.status(422).send({
+            status: 422,
+            message: `cannot use your reff code`
+        });
+    }
+
     try {
         const update = await model.user.update(
             {
@@ -54,20 +74,16 @@ exports.setRefral = async(req, res) => {
         )
 
         if (update) {
-            res.status(201).send(JSON.stringify(
-                {
-                    status: 201,
-                    data: `referal has been update`
-                }
-            ));
+            return res.status(201).send({
+                status: 201,
+                data: `referal has been update`
+            });
         }
     } catch (error) {
-        res.status(422).send(JSON.stringify(
-            {
-                status: 422,
-                message: `your refferal id is not found ${error}`
-            }
-        ));
+        return res.status(422).send({
+            status: 422,
+            message: `your refferal id is not found ${error}`
+        });
     }
 }
 
@@ -95,16 +111,25 @@ exports.referalList = async(req, res) => {
     const transformed = [];
     if (reffereds.length > 0) {
         transformed = await Promise.all(reffereds.map(async (reff) => {
-            const reff = await reffLevel(reff.user_address)
-            const percent = await percentage(reff)
+            const refs = await reffLevel(reff.user_address)
+            const percent = await percentage(refs)
+
+            let state = 'pending'
+            if (reff.state == 1) {
+                state = 'process';
+            } else if (reff.state == 3) {
+                state = 'claimed';
+            }else if (reff.state == -1) {
+                state = 'failed'
+            }
 
             return {
                 user_address: reff.user_address,
                 reference: reff.referemce,
                 amount: reff.amount,
-                reffLevel: reff,
+                reffLevel: refs,
                 percent: percent,
-                state: reff.state,
+                state: state,
                 created_at: reff.created_at
             }
         }))
@@ -127,12 +152,12 @@ exports.claimRewardReff = async(req, res) => {
     const total = await model.refferal.count({
         where: {
           reference: user.address,
-          state: 'pending'
+          state: 0
         }
     });
 
     if (total > 0) {
-        const job = { user_address: user.address, status: 'process', timestamp: Date.now() }
+        const job = { user_address: user.address, status: 1, timestamp: Date.now() }
         addJob(job)
     }
 

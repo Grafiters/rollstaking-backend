@@ -31,11 +31,37 @@ const reffLevel = async (user_address) => {
 }
 
 /**
+ * @param {string} address
+ * @returns {{address: string, parent_id: any, level: int}}
+ */
+const nextRefferal = async(address) => {
+    const user = await model.user.findOne({
+        where: {
+            address: address
+        }
+    })
+
+    const reffUser = await model.user.findOne({
+        where: {
+            id: user.parent_id
+        }
+    })
+    
+    const lvl = reffLevel(reffUser.address)
+
+    return {
+        address: reffUser.address,
+        parent_id: reffUser.parent_id,
+        level: lvl
+    }
+}
+
+/**
  * @param {int} level
  * @returns {string}
  */
 const percentage = async (level) => {
-    const data = await model.configs.findOne({
+    const data = await model.config.findOne({
         where: {
             name: `Level ${level}`
         }
@@ -50,5 +76,6 @@ const percentage = async (level) => {
 
 module.exports = {
     reffLevel,
-    percentage
+    percentage,
+    nextRefferal
 }
