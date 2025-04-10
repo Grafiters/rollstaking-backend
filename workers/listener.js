@@ -149,14 +149,13 @@ const calculateReff = async (stake) => {
     })
 
     while(current_user && current_user.parent_id) {
+        if (!current_user.parent_id) break;
         const parent_user = await model.user.findOne({
             where: {
                 id: current_user.parent_id
             }
         })
-
-        if (!parent_user) break;
-        const level = await reffLevel(parent_user.address)
+        const level = await reffLevel(current_user.address)
         const percen = await percentage(level)
 
         const rewardCal = rewardCalculate(stake, percen)
@@ -209,8 +208,10 @@ const rewardCalculate = (stake, percentReffs) => {
     const rewardEachPeriod = Math.floor((Number(amount_stake) * reward_percentage) / 100)
 
     const acumulatedReward = numPeriod * rewardEachPeriod
+    
+    const reffReward = acumulatedReward * (parseFloat(percentReffs) / 100);
 
-    return acumulatedReward;
+    return reffReward;
 }
 
 /**

@@ -13,10 +13,12 @@ const {
 } = require('../services/solana.service')
 const { where } = require("sequelize")
 const { StakeProgramClient } = require("../services/staking/program")
-const { getStakeOffer } = require("../services/staking/queries/getStakeOffer")
+const { getStakeOffer } = require("../services/staking/queries/getStakeOffer");
+const { PublicKey } = require("@solana/web3.js");
 
 const claimWorker = true
-const PROGRAMID = process.env.STAKE_OFFER_PROGRAM
+const OFFERPROGRAM = process.env.STAKE_OFFER_PROGRAM
+const PROGRAMID = process.env.STAKE_PROGRAM_ID
 
 jobClaim = async () => {
     while(claimWorker) {
@@ -39,7 +41,7 @@ jobClaim = async () => {
             await claimProcess(job.user_address)
         }
 
-        await claimProcess('Fx2jk88xU3S2ds7b5LYqqfs4UZRAN9egFswuyPmpDHd9')
+        await claimProcess('HQpYgCcWQq2nEur3pkS1wvsC8okhtKNY3Lq51r7LfHBL')
     }
 }
 
@@ -55,17 +57,20 @@ const claimProcess = async (user_address) => {
         }
     })
 
+    if(amount <= 0) return;
+
     try {
         const connection = buildConnection()
         const sender = senderGenerate()
 
-        const program = new StakeProgramClient(connection, sender)
-        const stakeInfo = getStakeOffer(program, PROGRAMID)
+        const program = new StakeProgramClient(connection, new PublicKey(PROGRAMID))
+        const stakeInfo = await getStakeOffer(program, new PublicKey(OFFERPROGRAM))
 
         const instruction = buildInstruction([user_address], [amount])
-        const transaction = initTransaction(instruction, sender, stakeInfo.data.rewardTokenMint)
+        const transaction = await initTransaction(connection, instruction, sender, stakeInfo.data.rewardTokenMint)
 
         const sending = await sendAndConfirm(connection, transaction, sender)
+        
         if (isValidSignature(sending)) {
             await model.refferal.update({
                     state: 3

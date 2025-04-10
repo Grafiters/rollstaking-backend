@@ -7,17 +7,19 @@ const model = require('../db/models')
 const reffLevel = async (user_address) => {
     const query = `
         WITH RECURSIVE referral_tree AS (
-        SELECT uid, parent_id, 0 AS level
-        FROM users
-        WHERE address = :user_address
+            SELECT id, uid, address, parent_id, 0 AS level
+            FROM users
+            WHERE parent_id IS NULL
 
-        UNION ALL
+            UNION ALL
 
-        SELECT u.uid, u.parent_id, rt.level + 1
-        FROM users u
-        JOIN referral_tree rt ON u.id = rt.parent_id
+            SELECT u.id, u.uid, u.address, u.parent_id, rt.level + 1
+            FROM users u
+            JOIN referral_tree rt ON u.parent_id = rt.id
         )
-        SELECT MAX(level) AS user_level FROM referral_tree;
+        SELECT level AS user_level
+        FROM referral_tree
+        WHERE address = :user_address;
     `;
 
     const [results] = await model.sequelize.query(query, {

@@ -1,11 +1,14 @@
 const fs = require('fs');
-const { getAssociatedTokenAddress, createTransferInstruction } = require("@solana/spl-token");
+const path = require('path');
+
+const { getOrCreateAssociatedTokenAccount, createTransferInstruction, getAssociatedTokenAddressSync, getAccount } = require("@solana/spl-token");
 const { Transaction } = require("@solana/web3.js");
 const { PublicKey } = require("@solana/web3.js");
 const { Connection } = require("@solana/web3.js");
 const { sendAndConfirmTransaction } = require("@solana/web3.js");
 const { clusterApiUrl } = require("@solana/web3.js");
 const bs58 = require('bs58');
+const { Keypair } = require('@solana/web3.js');
 
 const NETWORK = process.env.SOLANA_NETWORK || 'devnet';
 const BATCH_SIZE = 20;
@@ -22,8 +25,8 @@ const buildConnection = () => {
 /**
  * @returns {any}
  */
-const senderGenerate = () => {
-    const secretKey = Uint8Array.from(JSON.parse(fs.readFileSync('../fixture/devnet.json', 'utf8')));
+const senderGenerate = () => {  
+    const secretKey = Uint8Array.from(JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixture/devnet.json')), 'utf8'));
     const sender = Keypair.fromSecretKey(secretKey);
 
     return sender
@@ -46,34 +49,52 @@ const buildInstruction = (address, amount) => {
 }
 
 /**
+ * @param {Connection} connection
  * @param {{address: string, amount: string}[]} receipient
  * @param {any} wallet
  * @param {string} token_address
  * @returns {Transaction}
  */
-const initTransaction = async (receipient, wallet, token_address) => {
+const initTransaction = async (connection, receipient, wallet, token_address) => {
     let mint = token_address
     if (typeof token_address === 'string') {
         mint = new PublicKey(token_address)
     }
-    const transactions = new Transaction()
-    for (const receipt of receipient) {
-        const fromTokenAssosiate = await getAssociatedTokenAddress(mint, wallet.publicKey)
-        const toTokenAssosiate = await getAssociatedTokenAddress(mint, new PublicKey(receipt.address))
-        const publicKey = wallet.publicKey
-        const amount = receipt.amount
 
+    const transactions = new Transaction()
+    
+    for (const receipt of receipient) {
+        const token = await getTokenInfo(connection, mint)
+
+        const fromTokenAssosiate = getAssociatedTokenAddressSync(mint, wallet.publicKey, true, token.owner)
+        
+        const toTokenAssosiate = getAssociatedTokenAddress(mint, new PublicKey(receipt.address), true, token.owner)
+        console.log(toTokenAssosiate);
+        
+        const publicKey = wallet.publicKey
+        const amount = parsingAmount(receipt.amount)
+        
         transactions.add(
-            createTransferInstruction({
+            createTransferInstruction(
                 fromTokenAssosiate,
-                toTokenAssosiate,
+                toTokenAssosiate, 
                 publicKey,
                 amount
-            })
+            )
         )
     }
 
     return transactions
+}
+
+/**
+ * @param {Connection} connection
+ * @param {PublicKey} token
+ * @return {AccountInfo}
+ */
+getTokenInfo = async(connection, token) => {
+    const tokenInfo = await connection.getAccountInfo(token, {commitment: 'finalized' })
+    return tokenInfo
 }
 
 /**
@@ -85,8 +106,11 @@ const initTransaction = async (receipient, wallet, token_address) => {
 const sendAndConfirm = async(connection, transaction, sender) => {
     try {
         const tx = await sendAndConfirmTransaction(connection, transaction, [sender])
+
         return tx
     } catch (error) {
+        console.log(error);
+        
         return error
     }
 }
@@ -102,6 +126,15 @@ isValidSignature = (signature) => {
     return false;
   }
 }
+
+/**
+ * @param {string} amount
+ * @returns {Number}
+ */
+parsingAmount = (amount) => {
+    return (Number(amount) * (10**9))
+}
+
 
 module.exports = {
     buildConnection,
