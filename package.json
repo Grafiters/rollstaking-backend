@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "cross-env NODE_ENV=development node server.js",
-    "dev:worker": "cross-env concurrently \"pnpm run dev:worker:referal\" --kill-others --kill-others-on-fail",
+    "dev:worker": "cross-env concurrently \"pnpm run dev:worker:referal\" \"pnpm run dev:worker:listener\" --kill-others --kill-others-on-fail",
     "dev:worker:referal": "dotenv -e .env.development node workers/referal.js",
     "dev:worker:listener": "dotenv -e .env.development node workers/listener.js",
     "start": "cross-env NODE_ENV=production node server.js",

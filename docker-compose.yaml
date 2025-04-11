@@ -1,0 +1,16 @@
+version: '3'
+services:
+  api:
+    image: rollstaking:0.0.1
+    restart: always
+    ports:
+      - 1515:1515
+    env_file:
+      - .env.development
+    command: ["pnpm", "run", "dev"]
+  worker:
+    image: rollstaking:0.0.1
+    restart: always
+    env_file:
+      - .env.development
+    command: ["pnpm", "run", "dev:worker"]

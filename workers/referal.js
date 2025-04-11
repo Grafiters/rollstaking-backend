@@ -39,10 +39,15 @@ jobClaim = async () => {
             info(`done processing jobs ${job}`)
 
             await claimProcess(job.user_address)
-        }
 
-        await claimProcess('B9DJgiG4TdkQ5HjRpGUTRit6MVHQqsZgCT9tzABBB9ea')
+            await sleep(5000);
+        }
     }
+}
+
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
