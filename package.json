@@ -12,6 +12,7 @@
     "start": "cross-env NODE_ENV=production node server.js",
     "start:worker": "cross-env NODE_ENV=production concurrently \"pnpm run start:worker:referal\" --kill-others --kill-others-on-fail",
     "start:worker:referal": "cross-env NODE_ENV=production node workers/referal.js",
+    "start:worker:listener": "dotenv -e .env.production node workers/listener.js",
     "db:create:dev": "cross-env NODE_ENV=development npx sequelize-cli db:create",
     "db:create:prod": "cross-env NODE_ENV=production npx sequelize-cli db:create",
     "db:migrate:dev": "cross-env NODE_ENV=development npx sequelize-cli db:migrate",

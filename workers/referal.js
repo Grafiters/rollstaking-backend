@@ -22,29 +22,22 @@ const PROGRAMID = process.env.STAKE_PROGRAM_ID
 
 jobClaim = async () => {
     while(claimWorker) {
-        if (hasJob()) {
-            const job = getJob()
-            info(`processing jobs ${job}`)
+        console.log(`processing to claim reward`);
+    
+        const [jobs] = await model.sequelize.query(`
+            SELECT DISTINCT reference
+            FROM "refferals"
+            WHERE state = 1`
+        );
 
-            await model.refferal.update({
-                state: job.status,
-            },
-            {
-                where: {
-                    reference: req.user.address,
-                    state: 1
-                }
-            })
-
-            info(`done processing jobs ${job}`)
-
-            await claimProcess(job.user_address)
-
-            await sleep(5000);
+        for (const job of jobs) {
+            await claimProcess(job.reference)
         }
+        
+        console.log(`processing to next claim reward`);
+        await sleep(5000);
     }
 }
-
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -88,6 +81,15 @@ const claimProcess = async (user_address) => {
                     }
                 }
             )
+            
+            await model.user.update({
+                claim_reff_reward: amount
+            },
+            {
+                where: {
+                    address: user_address
+                }
+            })
         }
 
         return true
@@ -95,8 +97,6 @@ const claimProcess = async (user_address) => {
         console.error(error);
         return false
     }
-
-    return false
 }
 
 jobClaim()

@@ -8,9 +8,19 @@ services:
     env_file:
       - .env.development
     command: ["pnpm", "run", "dev"]
+
   worker:
     image: rollstaking:0.0.1
     restart: always
     env_file:
       - .env.development
     command: ["pnpm", "run", "dev:worker"]
+
+  dbpgsql:
+    image: postgres:13-alpine
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: rollstacking
+      POSTGRES_PASSWORD: rollstacking-2025

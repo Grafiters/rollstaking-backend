@@ -26,7 +26,6 @@ const reffLevel = async (user_address) => {
         replacements: { user_address },
         type: model.sequelize.QueryTypes.SELECT
     });
-    console.log(results);
     
 
     return results.user_level ?? 0;

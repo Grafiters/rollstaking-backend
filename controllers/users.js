@@ -124,9 +124,16 @@ exports.referalList = async(req, res) => {
                 state = 'failed'
             }
 
+            const refUser = await model.user.findOne({
+                where: {
+                    address: reff.reference
+                }
+            })
+
             return {
                 user_address: reff.user_address,
-                reference: reff.referemce,
+                reff_uid: refUser.uid,
+                reference: reff.reference,
                 amount: reff.amount,
                 reffLevel: refs,
                 percent: percent,
@@ -158,12 +165,19 @@ exports.claimRewardReff = async(req, res) => {
     });
 
     if (total > 0) {
-        const job = { user_address: user.address, status: 1, timestamp: Date.now() }
-        addJob(job)
+        await model.refferal.update({
+            state: 1,
+        },
+        {
+            where: {
+                reference: req.user.address,
+                state: 0
+            }
+        })
     }
 
     return res.status(200).send({
         status: 200,
-        data: `you don't have any pending reward to claim`,
+        data: `reward success to process`,
     });  
 }
