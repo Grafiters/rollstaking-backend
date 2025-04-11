@@ -41,7 +41,7 @@ jobClaim = async () => {
             await claimProcess(job.user_address)
         }
 
-        await claimProcess('HQpYgCcWQq2nEur3pkS1wvsC8okhtKNY3Lq51r7LfHBL')
+        await claimProcess('B9DJgiG4TdkQ5HjRpGUTRit6MVHQqsZgCT9tzABBB9ea')
     }
 }
 
@@ -69,7 +69,8 @@ const claimProcess = async (user_address) => {
         const instruction = buildInstruction([user_address], [amount])
         const transaction = await initTransaction(connection, instruction, sender, stakeInfo.data.rewardTokenMint)
 
-        const sending = await sendAndConfirm(connection, transaction, sender)
+
+        const sending = await sendAndConfirm(connection, transaction, sender, user_address)
         
         if (isValidSignature(sending)) {
             await model.refferal.update({

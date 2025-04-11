@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { getOrCreateAssociatedTokenAccount, createTransferInstruction, getAssociatedTokenAddressSync, getAccount } = require("@solana/spl-token");
+const { getAssociatedTokenAddressSync, unpackMint, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createTransferCheckedInstruction, TOKEN_2022_PROGRAM_ID } = require("@solana/spl-token");
 const { Transaction } = require("@solana/web3.js");
 const { PublicKey } = require("@solana/web3.js");
 const { Connection } = require("@solana/web3.js");
@@ -9,6 +9,7 @@ const { sendAndConfirmTransaction } = require("@solana/web3.js");
 const { clusterApiUrl } = require("@solana/web3.js");
 const bs58 = require('bs58');
 const { Keypair } = require('@solana/web3.js');
+const { error } = require('console');
 
 const NETWORK = process.env.SOLANA_NETWORK || 'devnet';
 const BATCH_SIZE = 20;
@@ -63,23 +64,66 @@ const initTransaction = async (connection, receipient, wallet, token_address) =>
 
     const transactions = new Transaction()
     
-    for (const receipt of receipient) {
-        const token = await getTokenInfo(connection, mint)
+    const tokenMintAccount = await connection.getAccountInfo(token_address)
+    if (!tokenMintAccount) {
+        error(`token mint not found`)
+        return null
+    }
 
-        const fromTokenAssosiate = getAssociatedTokenAddressSync(mint, wallet.publicKey, true, token.owner)
-        
-        const toTokenAssosiate = getAssociatedTokenAddress(mint, new PublicKey(receipt.address), true, token.owner)
-        console.log(toTokenAssosiate);
-        
-        const publicKey = wallet.publicKey
-        const amount = parsingAmount(receipt.amount)
+    const tokenMint = unpackMint(token_address, tokenMintAccount, TOKEN_2022_PROGRAM_ID)
+
+    for (const receipt of receipient) {
+        const receiptAddress = new PublicKey(receipt.address)
+
+        const fromTokenAssosiate = getAssociatedTokenAddressSync(
+            mint,
+            wallet.publicKey,
+            false,
+            tokenMintAccount.owner,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        )
+        transactions.add(
+            createAssociatedTokenAccountIdempotentInstruction(
+                wallet.publicKey,
+                fromTokenAssosiate,
+                wallet.publicKey,
+                mint,
+                tokenMintAccount.owner,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+            )
+        )
+
+        const toTokenAssosiate = getAssociatedTokenAddressSync(
+            mint,
+            receiptAddress,
+            false,
+            tokenMintAccount.owner,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        )
+
+        transactions.add(
+            createAssociatedTokenAccountIdempotentInstruction(
+                wallet.publicKey,
+                toTokenAssosiate,
+                receiptAddress,
+                mint,
+                tokenMintAccount.owner,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+            )
+        )
+
+        const amount = parsingAmount(receipt.amount, tokenMint.decimals)
         
         transactions.add(
-            createTransferInstruction(
+            createTransferCheckedInstruction(
                 fromTokenAssosiate,
-                toTokenAssosiate, 
-                publicKey,
-                amount
+                mint,
+                toTokenAssosiate,
+                wallet.publicKey,
+                amount,
+                tokenMint.decimals,
+                [],
+                tokenMintAccount.owner
             )
         )
     }
@@ -101,11 +145,18 @@ getTokenInfo = async(connection, token) => {
  * @param {Connection} connection
  * @param {Transaction} transaction
  * @param {any} sender
+ * @param {any} receipt
  * @returns {string}
  */
-const sendAndConfirm = async(connection, transaction, sender) => {
+const sendAndConfirm = async(connection, transaction, sender, receipt) => {
+    const { blockhash } = await connection.getLatestBlockhash()
+    transaction.recentBlockhash = blockhash
+    transaction.feePayer = sender.publicKey
+    
     try {
-        const tx = await sendAndConfirmTransaction(connection, transaction, [sender])
+        const tx = await sendAndConfirmTransaction(connection, transaction, [sender], {
+            commitment: 'confirmed'
+        })
 
         return tx
     } catch (error) {
@@ -129,10 +180,11 @@ isValidSignature = (signature) => {
 
 /**
  * @param {string} amount
+ * @param {Number} decimals
  * @returns {Number}
  */
-parsingAmount = (amount) => {
-    return (Number(amount) * (10**9))
+parsingAmount = (amount, decimals) => {
+    return Math.floor(amount * (10**decimals))
 }
 
 

@@ -202,13 +202,13 @@ const rewardCalculate = (stake, percentReffs) => {
     const reward_period = this.stakeOfferPda.data.rewardPeriod
     const current_timestamp = Date.now()
 
-    const stakeDuration = Math.floor(current_timestamp - time) / 100;
+    const stakeDuration = Math.floor(current_timestamp - time) / 1000;
     const numPeriod = Math.floor(stakeDuration / reward_period);
     
     const rewardEachPeriod = Math.floor((Number(amount_stake) * reward_percentage) / 100)
 
     const acumulatedReward = numPeriod * rewardEachPeriod
-    
+
     const reffReward = acumulatedReward * (parseFloat(percentReffs) / 100);
 
     return reffReward;

@@ -93,22 +93,23 @@ exports.referalList = async(req, res) => {
     const offset = (page * 1) * limit;
 
     const user = req.user
+    
     const total = await model.refferal.count({
         where: {
           reference: user.address
         }
     });
-
+    
     const reffereds = await model.refferal.findAll({
+        page: page,
+        limit: limit,
         where: {
             reference: user.address
         },
-        limit,
-        offset,
         order: [['createdAt', 'DESC']]
     })
 
-    const transformed = [];
+    let transformed = [];
     if (reffereds.length > 0) {
         transformed = await Promise.all(reffereds.map(async (reff) => {
             const refs = await reffLevel(reff.user_address)
