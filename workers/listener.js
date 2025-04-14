@@ -148,7 +148,15 @@ const calculateReff = async (stake) => {
         }
     })
 
-    while(current_user && current_user.parent_id) {
+    const maxLevel = await model.config.count({
+        where: {
+            name: `Level ${level}`
+        }
+    })
+    
+    let lvl = 0
+
+    while(current_user && current_user.parent_id && lvl <= maxLevel) {
         if (!current_user.parent_id) break;
         const parent_user = await model.user.findOne({
             where: {
@@ -187,7 +195,9 @@ const calculateReff = async (stake) => {
             }
         })}
 
-        return reward
+        lvl = level;
+
+        return reward;
     }
 }
 

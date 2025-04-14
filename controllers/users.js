@@ -41,6 +41,13 @@ exports.users = async(req, res) => {
 exports.setRefral = async(req, res) => {
     const { referals } = req.body
 
+    if (!referals) {
+        return res.status(422).send({
+            status: 422,
+            message: `referals must be exists`
+        });
+    }
+
     const reffCheck = await model.user.findOne({
         where: {
             uid: referals
