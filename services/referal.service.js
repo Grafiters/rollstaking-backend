@@ -4,30 +4,42 @@ const model = require('../db/models')
  * @param {string} user_address
  * @returns {integer}
  */
-const reffLevel = async (user_address) => {
+const reffLevel = async (user_address, parent_id = NULL) => {
     const query = `
-        WITH RECURSIVE referral_tree AS (
-            SELECT id, uid, address, parent_id, 0 AS level
-            FROM users
-            WHERE parent_id IS NULL
+        WITH RECURSIVE upline_tree AS (
+            SELECT u.id, u.uid, u.address, u.parent_id, 1 AS level
+            FROM users child
+            JOIN users u ON u.id = child.parent_id
+            WHERE child.address = :user_address
 
             UNION ALL
 
-            SELECT u.id, u.uid, u.address, u.parent_id, rt.level + 1
+            SELECT u.id, u.uid, u.address, u.parent_id, ut.level + 1
             FROM users u
-            JOIN referral_tree rt ON u.parent_id = rt.id
+            JOIN upline_tree ut ON u.id = ut.parent_id
+            WHERE ut.level < 10
+        ),
+        max_level AS (
+            SELECT MAX(level) AS total_level FROM upline_tree
         )
-        SELECT level AS user_level
-        FROM referral_tree
-        WHERE address = :user_address;
+        SELECT 
+            ut.id,
+            ut.uid,
+            ut.address,
+            ut.parent_id,
+            (ml.total_level - ut.level + 1) AS level
+        FROM upline_tree ut, max_level ml
+        WHERE id = :parent_id;
     `;
 
     const [results] = await model.sequelize.query(query, {
-        replacements: { user_address },
+        replacements: { user_address: user_address, parent_id: parent_id },
         type: model.sequelize.QueryTypes.SELECT
     });
     
-    return results.user_level ?? 0;
+    if (!results) return 0;
+
+    return results.level ?? 0;
 }
 
 /**

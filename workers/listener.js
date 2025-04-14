@@ -11,9 +11,10 @@ const { StakeProgramClient } = require('../services/staking/program')
 const { createPublisherStakeEventSubscription } = require('../services/staking/subcription');
 const { StakeDepositEvent } = require('../services/staking/events/stakeDepositEvent');
 const { info } = require('console');
-const { percentage, reffLevel } = require('../services/referal.service');
+const { percentage, reffLevel, nextRefferal } = require('../services/referal.service');
 const model = require('../db/models');
 const { dbConnection } = require('./config.js');
+const { Op } = require('sequelize');
 
 const LISTEN = true
 
@@ -38,12 +39,12 @@ function sleep(ms) {
 
 const runListener = async() => {
     await dbConnection()
-    this.stakeOfferPda = await init()
+    // this.stakeOfferPda = await init()
     
     while(LISTEN) {
-        console.log(`waiting process`);
-        const event = fetchEvent()
-        console.log(`process done`);
+        // console.log(`waiting process`);
+        // const event = fetchEvent()
+        // console.log(`process done`);
 
         await sleep(3000);
         console.log(`waiting process reward`);
@@ -142,7 +143,7 @@ processToDatabase = async (event, signature) => {
  * @param {any} stake
  */
 const calculateReff = async (stake) => {
-    const current_user = await model.user.findOne({
+    let current_user = await model.user.findOne({
         where: {
             address: stake.user_address
         }
@@ -150,11 +151,13 @@ const calculateReff = async (stake) => {
 
     const maxLevel = await model.config.count({
         where: {
-            name: `Level ${level}`
+            name: {
+                [Op.like]: `Level%`
+            }
         }
     })
     
-    let lvl = 0
+    let lvl = 0    
 
     while(current_user && current_user.parent_id && lvl <= maxLevel) {
         if (!current_user.parent_id) break;
@@ -163,9 +166,9 @@ const calculateReff = async (stake) => {
                 id: current_user.parent_id
             }
         })
-        const level = await reffLevel(current_user.address)
+        const level = await reffLevel(stake.user_address, parent_user.id)
         const percen = await percentage(level)
-
+        
         const rewardCal = rewardCalculate(stake, percen)
         const reward = parsingAmount(rewardCal.toString())
         
@@ -196,8 +199,7 @@ const calculateReff = async (stake) => {
         })}
 
         lvl = level;
-
-        return reward;
+        current_user = parent_user
     }
 }
 

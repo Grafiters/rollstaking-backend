@@ -119,7 +119,7 @@ exports.referalList = async(req, res) => {
     let transformed = [];
     if (reffereds.length > 0) {
         transformed = await Promise.all(reffereds.map(async (reff) => {
-            const refs = await reffLevel(reff.user_address)
+            const refs = await reffLevel(reff.user_address, user.id)
             const percent = await percentage(refs)
 
             let state = 'pending'
