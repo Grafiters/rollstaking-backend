@@ -166,7 +166,7 @@ const calculateReff = async (stake) => {
                 id: current_user.parent_id
             }
         })
-        const level = await reffLevel(stake.user_address, parent_user.id)
+        const level = await reffLevel(stake.user_address, parent_user.id, maxLevel)
         const percen = await percentage(level)
         
         const rewardCal = rewardCalculate(stake, percen)

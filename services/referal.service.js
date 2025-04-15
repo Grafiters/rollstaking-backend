@@ -4,7 +4,7 @@ const model = require('../db/models')
  * @param {string} user_address
  * @returns {integer}
  */
-const reffLevel = async (user_address, parent_id = NULL) => {
+const reffLevel = async (user_address, parent_id = NULL, maxLvl = 10) => {
     const query = `
         WITH RECURSIVE upline_tree AS (
             SELECT u.id, u.uid, u.address, u.parent_id, 1 AS level
